@@ -99,7 +99,7 @@ def align_2_aa_seqs(seq1, seq2):
     aligned_target = remove_numbers_from_end(aligned_target)
     aligned_query = remove_trailing_string(aligned_query, "query")
     aligned_query = remove_numbers_from_end(aligned_query)
-    return (best_alignment, score, aligned_target, aligned_query) 
+    return (score, aligned_target, aligned_query) 
 
 def remove_trailing_string(sequence, string):
     if sequence.endswith(string):
@@ -110,7 +110,7 @@ def remove_numbers_from_end(s):
     # Pattern to match numbers at the end of the string
     return re.sub(r'\d+$', '', s)  
 
-
+# compares 2 strings with respect to hxb2
 def compare_2_strings (hxb2_seq, ref, query):
     query_mut_dict = {}
     pos = 1

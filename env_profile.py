@@ -1,24 +1,34 @@
 import csv
 import re
+import sys
 import pandas as pd
 import pickle
 
 from hiv_seq_utils import read_fasta
 
 pd.set_option('display.max_rows', 50)
-hxb2 = "RefData/HXB2_GP120_AA.fasta"
-(header, hxb2_seq) = read_fasta(hxb2)
 
-# Once the dataframe has been serialized I commented out the following 2 
-# blocks of code
+# Constants
+GENE = "GP41"
+
+# Input files
+hxb2_seq_path = "RefData/HXB2_" + GENE + "_AA.fasta"
+mutations_file = "Mutations_" + GENE + ".xlsx"
+(header, hxb2_seq) = read_fasta(hxb2_seq_path)
+ref_seq_len = len(hxb2_seq)
+
+# Output files
+frequencies_all_output_file = f'{GENE}_Frequencies_All.xlsx'
+frequencies_ge1pcnt_file = f'{GENE}_Frequencies_GE1pcnt.xlsx'
+frequencies_horizontal_profile_file = f'{GENE}_Profile.xlsx'
+
 # Read from the excel file which was created by gp120_align.py
-mutations_file = "mutations.csv"
-mutations_df = pd.read_csv(mutations_file, header=[0], skiprows=[1])
-print(mutations_df)
+mutations_df = pd.read_excel(mutations_file, header=[0], skiprows=[1])
+print("mutations_df:\n", mutations_df)
 
 subtype_pcnt = mutations_df['Subtype'].value_counts(normalize=True) * 100
-print(subtype_pcnt.head(10))
-subtypes = ['B', 'C', '01_AE', 'A1', '02_AG', 'D', 'G']
+#print(subtype_pcnt.head(10))
+mutations_df = mutations_df.iloc[:, 3:]
 
 def modify_cell(cell, pos):
     hxb2_ref = hxb2_seq[pos-1]
@@ -30,47 +40,49 @@ def modify_cell(cell, pos):
     else: 
         return cell
 
-mutations_df = mutations_df.iloc[:, 3:]
-print("Amino Acid Profile:\n", mutations_df)
-
 for i, col in enumerate(mutations_df.columns, start=1):
     mutations_df[col] = mutations_df[col].apply(lambda cell: modify_cell(cell, i))
-print("Amino Acid Profile - Updated:\n", mutations_df)
+#print("Amino Acid Profile - Updated:\n", mutations_df, "\n")
+
 
 frequencies = {}
 for column in mutations_df.columns:
     value_counts = mutations_df[column].value_counts(normalize=True) * 100
     frequencies[column] = value_counts.round(1)
-
-with open('Frequencies.txt', 'w') as f:
-   print(frequencies, file=f)
-
-# Convert the frequencies dictionary to a DataFrame
 frequencies_df = pd.DataFrame(frequencies).fillna(0)
+print("Frequencies dataframe\n", frequencies_df, "\n")
 
-# Step 2: Display the frequencies DataFrame
-print("Frequencies dataframe\n", frequencies_df)
 
-# Parse the DataFrame
-parsed_data = []
+# Sort each column of frequencies_df in descending order of AA frequency
+# Create two df, one with all frequencies and one with frequencies >= 1%
+sorted_data = []
+sorted_data_ge1pcnt = []
 for column in frequencies_df.columns:
     # Get the sorted value frequencies (excluding zeros)
     sorted_values = frequencies_df[column][frequencies_df[column] > 0].sort_values(ascending=False)
     for value, frequency in sorted_values.items():
+        sorted_data.append({
+            "Pos": column,
+            "AA": value,
+            "Pcnt": frequency
+        })
         if frequency < 1.0:
             continue
-        parsed_data.append({
+        sorted_data_ge1pcnt.append({
             "Pos": column,
             "AA": value,
             "Pcnt": frequency
         })
 
-frequencies_parsed_df = pd.DataFrame(parsed_data)
-print("Parsed_frequencies >= 1%", frequencies_parsed_df)
-frequencies_parsed_df.to_excel("Profile1.xlsx", index=False)
+frequencies_sorted_df = pd.DataFrame(sorted_data)
+frequencies_sorted_df.to_excel(frequencies_all_output_file, index=False)
+frequencies_sorted_ge1pcnt_df = pd.DataFrame(sorted_data_ge1pcnt)
+frequencies_sorted_ge1pcnt_df.to_excel(frequencies_ge1pcnt_file, index=False)
+
+print("Parsed_frequencies >= 1%:\n", frequencies_sorted_df)
 
 horiz_profile = {}
-for mutations in parsed_data:
+for mutations in sorted_data_ge1pcnt:
     position = int(mutations['Pos'][1:])
     aa = mutations['AA']
     pcnt = round(mutations['Pcnt'])
@@ -99,6 +111,7 @@ for pos in sorted(horiz_profile.keys()):
 
 df = pd.DataFrame(data)
 print(df)
-df.to_excel('horiz_profile.xlsx', index=False)
+df.to_excel(frequencies_horizontal_profile_file, index=False)
+#sys.exit("Exiting the program.")
 
 
