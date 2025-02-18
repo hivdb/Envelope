@@ -10,13 +10,20 @@ from hiv_seq_utils import (read_fasta,
                            check_hxb2_start)
 
 pd.set_option('display.max_rows', 50)
-GENE = "GP41"
+GENE = "GP120"
+
+# The LANL_FilteredAASeqs file has amino acid sequences downloaded from GenBank
+# that were in the original file LANL_HIV1_FLT_2021_accessions.txt
+# The filtered file has only those sequences with more than 450 amino acids
 env_sequences_file = "RefData/LANL_FilteredAASeqs_Dec15.xlsx"
-metadata_file = "RefData/LANL_gp120_search_1pp_13075_w_subtypes_June22.xlsx"
+
+# This file has the subtypes from LANL
+#metadata_file = "RefData/LANL_gp120_search_1pp_13075_w_subtypes_June22.xlsx"
+metadata_file = "RefData/LANL_Qry_Env_GE1000_Feb18_2025.xlsx"
+
 aligned_seqs_output_file = "Aligned_Seqs_" + GENE + ".xlsx"
 mutations_output_file_csv = "Mutations_" + GENE + ".csv"
 mutations_output_file_excel = "Mutations_" + GENE + ".xlsx"
-
 
 # Retrieve HXB2 gp120 or gp41 aas from GenBank. 
 # gp120 has 511 aas; gp41 has 345 aas
@@ -24,17 +31,16 @@ hxb2_seq_path = "RefData/HXB2_" + GENE + "_AA.fasta"
 (header, hxb2_seq) = read_fasta(hxb2_seq_path)
 ref_seq_len = len(hxb2_seq)
 
-
 # Retrive the AA seqs from the excel file with ~6000 filtered seqs
 # File does not contain HXB2; # Headers are "Accession", "NumAAs", "Sequence"
 df_seqs = pd.read_excel(env_sequences_file, engine='openpyxl')
 
-# Retrieve the metadata from LANL with subtype from the gp120_search_1pp_June_2022 file
+# Retrieve the metadata from LANL with subtype from the 
+# RefData/LANL_Qry_Env_GE1000_Feb18_2025.xlsx file
 df_subtypes = pd.read_excel(metadata_file, sheet_name= 'Subtypes', engine='openpyxl')
 df_seqs_w_subtypes = df_seqs.merge(df_subtypes[['Accession', 'Subtype']], on='Accession', how='left')
 df_seqs_w_subtypes = df_seqs_w_subtypes[['Accession', 'NumAAs', 'Subtype', 'Sequence']]
 dict_seqs = df_seqs_w_subtypes.set_index('Accession').to_dict(orient='index')
-
 
 # Aligns sequences and writes them to a excel file that contains an index,
 # the subtype, acccession number, numAAs, seq_len (query), score, 
@@ -47,6 +53,8 @@ def align_all_sequences_to_hxb2(dict_seqs):
         subtype = details['Subtype']
         aas = details['Sequence']
         counter += 1
+        if counter % 100 == 0:
+            print(counter)
         (score, hxb2, query) = align_2_aa_seqs(hxb2_seq, aas)
         seq_len = len(query)
         if seq_len < (ref_seq_len - 50):
@@ -59,7 +67,6 @@ def align_all_sequences_to_hxb2(dict_seqs):
 alignment_df = align_all_sequences_to_hxb2(dict_seqs)
 alignment_df.to_excel(aligned_seqs_output_file, index=False)
 #sys.exit("Exiting the program.")
-
 
 # Read from the aligned_sequences file to create a "mutation profile" spreadsheet 
 # in which the amino acid at each position is compare to HXB2

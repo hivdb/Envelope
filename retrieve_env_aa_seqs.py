@@ -5,17 +5,17 @@ import sys
 from hiv_seq_utils import (read_fasta, safe_fetch_env_aa)
 
 # Create a CSV file with the gp160 amino acid sequences of all the entries in 
-# the LANL filtered envelope dataset (about 6500 accession numbers).
-# This has to be run just once. The program takes several hours because GenBank
+# the LANL filtered envelope dataset (about 6500 accession numbers) as described 
+# in https://doi.org/10.1093/jac/dkab257.
+
+# This program has to be run just once. It takes several hours because GenBank
 # responds slowly.
-# The file will not contain HXB2 because that will be used as the reference
+# The file does not contain HXB2 because that will be used as the reference
 # sequence in Env_align.py
 
 # Of note, many AA sequences are unable to be returned for various reasons 
-# Even HXB2 AAs were not returned (K03455). 
 # Further optimization of the program is required to better control what AAs
-# are identified. Translation of NAs may be required in some instances. In others,
-# it may be useful to return why AAs were not present  
+# are identified. 
 # Overall, 5862 sequences of lengths 462 to 901 were returned. These included
 # 50 sequences between 462 and 809 AAs.
 # 750 were missing; 44 were shorter than 450 AAs; These were deleted from the 
